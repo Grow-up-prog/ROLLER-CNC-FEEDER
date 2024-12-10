@@ -1,0 +1,145 @@
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2); //menggunakan LCD 16x2
+//variabel state
+
+
+/*
+  setting nomor pin button
+  selector manual auto
+  MANUAL : -->
+  maju <--> mundur   (JOG)
+  setting speed, -->sedang & cepat
+  AUTO :
+  setting length -->
+*/
+
+int SPD = 0;
+int L = 2400;
+int MD = 0;
+const int button1 = 8;  //SelektorManual
+const int button2 = 9;  //SelektorAuto
+const int button3 = 10; //PB-X
+const int button4 = 11; //PB-Y
+
+int button1VAL;
+int button2VAL;
+int button3VAL;
+int button4VAL;
+
+//last choice:
+int setSPD;
+int setL;
+int setMD;
+
+//setting stepper
+const int stepPin = 5;
+const int dirPin = 6;
+const int enPin = 7;
+int x = 0;
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  //PULLUP pada button pin
+  pinMode(button1, INPUT_PULLUP);
+  pinMode(button2, INPUT_PULLUP);
+  pinMode(button3, INPUT_PULLUP);
+  pinMode(button4, INPUT_PULLUP);
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
+  digitalWrite(enPin, LOW);
+  //pull up inpun pin akan HIGH apabila switch terbuka dan LOW ketika switch ter-tutup
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("CNC ROLL FEEDER");
+  delay(1500);
+  lcd.clear();
+}
+void loop() {
+  lcd.setCursor(0, 0);
+  lcd.print("SP:");
+  lcd.setCursor(8, 0);
+  lcd.print("L:");
+  lcd.setCursor(0, 1);
+  lcd.print("MD:");
+  button1VAL = digitalRead(button1);
+  button3VAL = digitalRead(button3);
+  button4VAL = digitalRead(button4);
+
+
+
+  if (button1VAL == HIGH) {
+    MD = 1;
+    lcd.setCursor(5, 1);
+    lcd.print("AUTO");
+  } else if (button1VAL == LOW) {
+    MD = 0;
+    lcd.setCursor(5, 1);
+    lcd.print("MANUAL");
+  }
+
+
+  if (SPD == LOW) {
+    lcd.setCursor(3, 0);
+    lcd.print("MID");
+  } else   if (SPD == HIGH) {
+    lcd.setCursor(3, 0);
+    lcd.print("HIGH");
+  }
+  //Printing Length\
+  lcd.setCursor(11, 0);
+  lcd.print(L);
+
+  if (MD != setMD || SPD != setSPD || L != setL) {
+    setL = L;
+    setSPD = SPD;
+    lcd.clear();
+    delay(500);
+  }
+
+  if (MD == LOW) {
+    if (button3VAL == HIGH && button4VAL == LOW) {
+      Serial.println("JOG-");
+    } else if (button3VAL == LOW && button4VAL == HIGH) {
+      Serial.println("JOG+");
+    } else if (button3VAL == LOW && button4VAL == LOW) {
+      SPD++;
+      if (SPD > 1) {
+        SPD = 0;
+      }
+    }
+  }
+
+
+  if (MD == HIGH) {
+    if (button3VAL == HIGH && button4VAL == LOW) {
+      L = L - 240;
+    } else if (button3VAL == LOW && button4VAL == HIGH) {
+      L = L + 240;
+    } else if (button3VAL == LOW && button4VAL == LOW) {
+      Serial.print("RUNNING");
+      digitalWrite(dirPin, HIGH); // Enables the motor to move in a particular direction
+      for (int x = 0; x < L; x++) {
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(500);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(500);
+      }
+      x = 0;
+
+    }
+  }
+  setMD = MD;
+  Serial.print("setSPD="); Serial.println(setSPD);
+  Serial.print("SPD="); Serial.println(SPD);
+  Serial.print("MD="); Serial.println(MD);
+  Serial.print("setMD="); Serial.println(setMD);
+  Serial.println(button1VAL);
+  delay(1500);
+}
+
+/*
+
+*/
