@@ -12,19 +12,24 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); //menggunakan LCD 16x2
   AUTO :
   setting length -->
 */
-
+int middleSpeed = 500;
+int fastSpeed = 200;
+int setSpeedRun;
 int SPD = 0;
-int L = 2400;
+int Lman = 10;//10cm start awal <-->2823
+int Lmesin;
 int MD = 0;
 const int button1 = 8;  //SelektorManual
 const int button2 = 9;  //SelektorAuto
 const int button3 = 10; //PB-X
 const int button4 = 11; //PB-Y
+const int button5 = 4; //TRIGGER
 
 int button1VAL;
 int button2VAL;
 int button3VAL;
 int button4VAL;
+int button5VAL;
 
 //last choice:
 int setSPD;
@@ -45,6 +50,7 @@ void setup() {
   pinMode(button2, INPUT_PULLUP);
   pinMode(button3, INPUT_PULLUP);
   pinMode(button4, INPUT_PULLUP);
+  pinMode(button5, INPUT_PULLUP);
   pinMode(stepPin, OUTPUT);
   pinMode(dirPin, OUTPUT);
   pinMode(enPin, OUTPUT);
@@ -56,6 +62,7 @@ void setup() {
   lcd.print("CNC ROLL FEEDER");
   delay(1500);
   lcd.clear();
+  Lmesin = Lman * 278;
 }
 void loop() {
   lcd.setCursor(0, 0);
@@ -67,6 +74,8 @@ void loop() {
   button1VAL = digitalRead(button1);
   button3VAL = digitalRead(button3);
   button4VAL = digitalRead(button4);
+  button5VAL = digitalRead(button5);
+  
 
 
 
@@ -84,16 +93,19 @@ void loop() {
   if (SPD == LOW) {
     lcd.setCursor(3, 0);
     lcd.print("MID");
+    setSpeedRun = middleSpeed;
   } else   if (SPD == HIGH) {
     lcd.setCursor(3, 0);
     lcd.print("HIGH");
+    setSpeedRun = fastSpeed;
   }
-  //Printing Length\
-  lcd.setCursor(11, 0);
-  lcd.print(L);
-
-  if (MD != setMD || SPD != setSPD || L != setL) {
-    setL = L;
+  //Printing Length
+  lcd.setCursor(10, 0);
+  lcd.print(Lman);
+  lcd.setCursor(14, 0);
+  lcd.print("CM");
+  if (MD != setMD || SPD != setSPD || Lmesin != setL) {
+    setL = Lmesin;
     setSPD = SPD;
     lcd.clear();
     delay(500);
@@ -102,8 +114,24 @@ void loop() {
   if (MD == LOW) {
     if (button3VAL == HIGH && button4VAL == LOW) {
       Serial.println("JOG-");
+      digitalWrite(dirPin, HIGH); // Enables the motor to move in a particular direction
+      for (int x = 0; x < 100; x++) {
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(setSpeedRun);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(setSpeedRun);
+      }
+      x = 0;
     } else if (button3VAL == LOW && button4VAL == HIGH) {
       Serial.println("JOG+");
+      digitalWrite(dirPin, LOW); // Enables the motor to move in a particular direction
+      for (int x = 0; x < 100 ; x++) {
+        digitalWrite(stepPin, HIGH);
+        delayMicroseconds(setSpeedRun);
+        digitalWrite(stepPin, LOW);
+        delayMicroseconds(setSpeedRun);
+      }
+      x = 0;
     } else if (button3VAL == LOW && button4VAL == LOW) {
       SPD++;
       if (SPD > 1) {
@@ -115,29 +143,28 @@ void loop() {
 
   if (MD == HIGH) {
     if (button3VAL == HIGH && button4VAL == LOW) {
-      L = L - 240;
+      if (Lman > 1) {
+        Lmesin = Lmesin - 278;
+        Lman--;
+      }
     } else if (button3VAL == LOW && button4VAL == HIGH) {
-      L = L + 240;
-    } else if (button3VAL == LOW && button4VAL == LOW) {
+      Lmesin = Lmesin + 278;
+      Lman++;
+    } else if (button3VAL == LOW && button4VAL == LOW ||button5VAL==LOW ) {
       Serial.print("RUNNING");
       digitalWrite(dirPin, HIGH); // Enables the motor to move in a particular direction
-      for (int x = 0; x < L; x++) {
+      for (int x = 0; x < Lmesin; x++) {
         digitalWrite(stepPin, HIGH);
-        delayMicroseconds(500);
+        delayMicroseconds(setSpeedRun);
         digitalWrite(stepPin, LOW);
-        delayMicroseconds(500);
+        delayMicroseconds(setSpeedRun);
       }
       x = 0;
 
     }
   }
   setMD = MD;
-  Serial.print("setSPD="); Serial.println(setSPD);
-  Serial.print("SPD="); Serial.println(SPD);
-  Serial.print("MD="); Serial.println(MD);
-  Serial.print("setMD="); Serial.println(setMD);
-  Serial.println(button1VAL);
-  delay(1500);
+  delay(500);
 }
 
 /*
